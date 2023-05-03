@@ -52,6 +52,12 @@ export class GameScene extends Phaser.Scene {
 
     this.gridEngine.create(cloudCityTilemap, gridEngineConfig);
 
+    const afterCreate = {
+      event: 'after-create',
+      id: me['id'],
+    };
+    this.ws.send(JSON.stringify({ event: 'message', data: afterCreate }));
+
     const cursors = this.input.keyboard.createCursorKeys();
     cursors.left.on('down', (event) => {
       if (!this.isBlock('left')) {
@@ -132,31 +138,39 @@ export class GameScene extends Phaser.Scene {
            */
           //payload는 id: pos가 n개 있음
           for (const [id, data] of Object.entries<any>(payload.result)) {
-            this.gridEngine.moveTo(id,{x:data['pos']['x'],y:data['pos']['y']});
+            this.gridEngine.moveTo(id, { x: data['pos']['x'], y: data['pos']['y'] });
           }
-          
-          /*
-          const pos = payload['pos'];
-          const position :Position ={x:pos['x'],y:pos['y']};
-          this.gridEngine.moveTo(me['id'] , position);
-          */
+
           break;
         case 'connection-established':
           console.log('connection-established');
           const id = payload['id'];
           const pos = payload['pos'];
-          console.log(payload);
           clientList[id] = {
-            id : id,
-            pos : pos,
-          }
-          me['id'] = id;//clientlist에 넣고 hasOwnProperty로 추가 필드 체크하면되는데 귀차늠
+            id: id,
+            pos: pos,
+          };
+          me['id'] = id; //clientlist에 넣고 hasOwnProperty로 추가 필드 체크하면되는데 귀차늠
           me['pos'] = pos;
           console.log(`my id is ${clientList[id].id}`);
           console.log(`my init pos is ${clientList[id].pos.x} , ${clientList[id].pos.y}`);
+          break;
+        case 'exist-userlist':
+          const clients = payload['clients'];
+          for (const [id, pos] of Object.entries<any>(clients)) {
+            clientList[id] = {
+              id: id,
+              pos: pos,
+            };
+            const characterData: CharacterData = {
+              id: id,
+              sprite: this.makeSprite(),
+              walkingAnimationMapping: 6,
+              startPosition: { x: pos.x, y: pos.y },
+            };
 
-          //새로 접속했으면 나 말고 기본 구성 다 해서 addcharacter해줘야됨
-
+            this.gridEngine.addCharacter(characterData);
+          }
           break;
         case 'new-user':
           console.log('new user connect');
@@ -184,8 +198,7 @@ export class GameScene extends Phaser.Scene {
     });
   }
 
-  public update() {
-  }
+  public update() {}
 
   preload() {
     this.load.image('tiles', 'assets/cloud_tileset.png');
